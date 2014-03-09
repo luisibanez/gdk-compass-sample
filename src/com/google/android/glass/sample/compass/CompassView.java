@@ -52,7 +52,10 @@ public class CompassView extends View {
     /** Various dimensions and other drawing-related constants. */
     private static final float NEEDLE_WIDTH = 10;
     private static final float NEEDLE_HEIGHT = 80;
-    private static final int NEEDLE_COLOR = Color.GREEN;
+    private static final int NEEDLE_COLOR = Color.BLUE;
+    private static final float LEVEL_WIDTH = 200;
+    private static final float LEVEL_HEIGHT = 10;
+    private static final int LEVEL_COLOR = Color.RED;
     private static final float TICK_WIDTH = 2;
     private static final float TICK_HEIGHT = 10;
     private static final float DIRECTION_TEXT_HEIGHT = 84.0f;
@@ -195,54 +198,13 @@ public class CompassView extends View {
     protected void onDraw(Canvas canvas) {
         super.onDraw(canvas);
 
-        // The view displays 90 degrees across its width so that one 90 degree head rotation is
-        // equal to one full view cycle.
-        float pixelsPerDegree = getWidth() / 90.0f;
-        float centerX = getWidth() / 2.0f;
-        float centerY = getHeight() / 2.0f;
-
-        canvas.save();
-        canvas.translate(-mAnimatedHeading * pixelsPerDegree + centerX, centerY);
-
-        drawCompassDirections(canvas, pixelsPerDegree);
-
-        canvas.restore();
-
         mPaint.setColor(NEEDLE_COLOR);
         drawNeedle(canvas, false);
         drawNeedle(canvas, true);
+
+        mPaint.setColor(LEVEL_COLOR);
+        drawHorizontal(canvas);
     }
-
-    /**
-     * Draws the compass direction strings (N, NW, W, etc.).
-     *
-     * @param canvas the {@link Canvas} upon which to draw
-     * @param pixelsPerDegree the size, in pixels, of one degree step
-     */
-    private void drawCompassDirections(Canvas canvas, float pixelsPerDegree) {
-        float degreesPerTick = 360.0f / mDirections.length;
-
-        mPaint.setColor(Color.RED);
-
-        // We draw two extra ticks/labels on each side of the view so that the
-        // full range is visible even when the heading is approximately 0.
-        for (int i = -2; i <= mDirections.length + 2; i++) {
-            if (MathUtils.mod(i, 2) == 0) {
-                // Draw a text label for the even indices.
-                String direction = mDirections[MathUtils.mod(i, mDirections.length)];
-                mPaint.getTextBounds(direction, 0, direction.length(), mTextBounds);
-
-                canvas.drawText(direction,
-                        i * degreesPerTick * pixelsPerDegree - mTextBounds.width() / 2,
-                        mTextBounds.height() / 2, mPaint);
-            } else {
-                // Draw a tick mark for the odd indices.
-                canvas.drawLine(i * degreesPerTick * pixelsPerDegree, -TICK_HEIGHT / 2, i
-                        * degreesPerTick * pixelsPerDegree, TICK_HEIGHT / 2, mTickPaint);
-            }
-        }
-    }
-
 
     /**
      * Draws a needle that is centered at the top or bottom of the compass.
@@ -272,6 +234,28 @@ public class CompassView extends View {
         mPath.lineTo(centerX, origin + sign * NEEDLE_HEIGHT);
         mPath.lineTo(centerX + needleHalfWidth, origin + sign * (NEEDLE_HEIGHT - 4));
         mPath.lineTo(centerX + needleHalfWidth, origin);
+        mPath.close();
+
+        canvas.drawPath(mPath, mPaint);
+    }
+
+    /**
+     * Draws a horizontal line
+     *
+     * @param canvas the {@link Canvas} upon which to draw
+     */
+    private void drawHorizontal(Canvas canvas) {
+        float centerX = getWidth() / 2.0f;
+        float centerY = getHeight() / 2.0f;
+
+        float levelHalfWidth = LEVEL_WIDTH / 2;
+        float levelHalfHeight = LEVEL_HEIGHT / 2;
+
+        mPath.reset();
+        mPath.moveTo(centerX - levelHalfWidth, centerY - levelHalfHeight);
+        mPath.lineTo(centerX - levelHalfWidth, centerY + levelHalfHeight);
+        mPath.lineTo(centerX + levelHalfWidth, centerY + levelHalfHeight);
+        mPath.lineTo(centerX + levelHalfWidth, centerY - levelHalfHeight);
         mPath.close();
 
         canvas.drawPath(mPath, mPaint);
