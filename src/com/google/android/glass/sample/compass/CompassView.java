@@ -50,9 +50,9 @@ import java.util.List;
 public class CompassView extends View {
 
     /** Various dimensions and other drawing-related constants. */
-    private static final float NEEDLE_WIDTH = 6;
-    private static final float NEEDLE_HEIGHT = 125;
-    private static final int NEEDLE_COLOR = Color.RED;
+    private static final float NEEDLE_WIDTH = 10;
+    private static final float NEEDLE_HEIGHT = 80;
+    private static final int NEEDLE_COLOR = Color.GREEN;
     private static final float TICK_WIDTH = 2;
     private static final float TICK_HEIGHT = 10;
     private static final float DIRECTION_TEXT_HEIGHT = 84.0f;
@@ -204,13 +204,6 @@ public class CompassView extends View {
         canvas.save();
         canvas.translate(-mAnimatedHeading * pixelsPerDegree + centerX, centerY);
 
-        // In order to ensure that places on a boundary close to 0 or 360 get drawn correctly, we
-        // draw them three times; once to the left, once at the "true" bearing, and once to the
-        // right.
-        for (int i = -1; i <= 1; i++) {
-            drawPlaces(canvas, pixelsPerDegree, i * pixelsPerDegree * 360);
-        }
-
         drawCompassDirections(canvas, pixelsPerDegree);
 
         canvas.restore();
@@ -229,7 +222,7 @@ public class CompassView extends View {
     private void drawCompassDirections(Canvas canvas, float pixelsPerDegree) {
         float degreesPerTick = 360.0f / mDirections.length;
 
-        mPaint.setColor(Color.WHITE);
+        mPaint.setColor(Color.RED);
 
         // We draw two extra ticks/labels on each side of the view so that the
         // full range is visible even when the heading is approximately 0.
@@ -250,89 +243,6 @@ public class CompassView extends View {
         }
     }
 
-    /**
-     * Draws the pins and text labels for the nearby list of places.
-     *
-     * @param canvas the {@link Canvas} upon which to draw
-     * @param pixelsPerDegree the size, in pixels, of one degree step
-     * @param offset the number of pixels to translate the drawing operations by in the horizontal
-     *         direction; used because place names are drawn three times to get proper wraparound
-     */
-    private void drawPlaces(Canvas canvas, float pixelsPerDegree, float offset) {
-        if (mOrientation.hasLocation() && mNearbyPlaces != null) {
-            synchronized (mNearbyPlaces) {
-                Location userLocation = mOrientation.getLocation();
-                double latitude1 = userLocation.getLatitude();
-                double longitude1 = userLocation.getLongitude();
-
-                mAllBounds.clear();
-
-                // Loop over the list of nearby places (those within 10 km of the user's current
-                // location), and compute the relative bearing from the user's location to the
-                // place's location. This determines the position on the compass view where the
-                // pin will be drawn.
-                for (Place place : mNearbyPlaces) {
-                    double latitude2 = place.getLatitude();
-                    double longitude2 = place.getLongitude();
-                    float bearing = MathUtils.getBearing(latitude1, longitude1, latitude2,
-                            longitude2);
-
-                    String name = place.getName();
-                    double distanceKm = MathUtils.getDistance(latitude1, longitude1, latitude2,
-                            longitude2);
-                    String text = getContext().getResources().getString(
-                        R.string.place_text_format, name, mDistanceFormat.format(distanceKm));
-
-                    // Measure the text and offset the text bounds to the location where the text
-                    // will finally be drawn.
-                    Rect textBounds = new Rect();
-                    mPlacePaint.getTextBounds(text, 0, text.length(), textBounds);
-                    textBounds.offsetTo((int) (offset + bearing * pixelsPerDegree
-                            + PLACE_PIN_WIDTH / 2 + PLACE_TEXT_MARGIN), canvas.getHeight() / 2
-                            - (int) PLACE_TEXT_HEIGHT);
-
-                    // Extend the bounds rectangle to include the pin icon and a small margin
-                    // to the right of the text, for the overlap calculations below.
-                    textBounds.left -= PLACE_PIN_WIDTH + PLACE_TEXT_MARGIN;
-                    textBounds.right += PLACE_TEXT_MARGIN;
-
-                    // This loop attempts to find the best vertical position for the string by
-                    // starting at the bottom of the display and checking to see if it overlaps
-                    // with any other labels that were already drawn. If there is an overlap, we
-                    // move up and check again, repeating this process until we find a vertical
-                    // position where there is no overlap, or when we reach the limit on
-                    // overlapping place names.
-                    boolean intersects;
-                    int numberOfTries = 0;
-                    do {
-                        intersects = false;
-                        numberOfTries++;
-                        textBounds.offset(0, (int) -(PLACE_TEXT_HEIGHT + PLACE_TEXT_LEADING));
-
-                        for (Rect existing : mAllBounds) {
-                            if (Rect.intersects(existing, textBounds)) {
-                                intersects = true;
-                                break;
-                            }
-                        }
-                    } while (intersects && numberOfTries <= MAX_OVERLAPPING_PLACE_NAMES);
-
-                    // Only draw the string if it would not go high enough to overlap the compass
-                    // directions. This means some places may not be drawn, even if they're nearby.
-                    if (numberOfTries <= MAX_OVERLAPPING_PLACE_NAMES) {
-                        mAllBounds.add(textBounds);
-
-                        canvas.drawBitmap(mPlaceBitmap, offset + bearing * pixelsPerDegree
-                                - PLACE_PIN_WIDTH / 2, textBounds.top + 2, mPaint);
-                        canvas.drawText(text,
-                                offset + bearing * pixelsPerDegree + PLACE_PIN_WIDTH / 2
-                                + PLACE_TEXT_MARGIN, textBounds.top + PLACE_TEXT_HEIGHT,
-                                mPlacePaint);
-                    }
-                }
-            }
-        }
-    }
 
     /**
      * Draws a needle that is centered at the top or bottom of the compass.
